@@ -85,7 +85,7 @@ print('Classification Report')
 target_names = ['Adenocarcinoma', 'Large Cell Carcinoma', 'Squamous Cell Carcinoma', 'Normal']
 print(classification_report(validation_generator.classes, y_pred, target_names=target_names))
 
-# Plot Training & Validation Accuracy and Loss
+
 plt.figure(figsize=(12, 4))
 
 plt.subplot(1, 2, 1)
