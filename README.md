@@ -31,4 +31,4 @@ Conclusion
 INAX-Net proves that deep learning techniques, when combined with powerful classifiers like SVM, can significantly improve the accuracy and reliability of lung cancer detection systems. This innovative approach offers a promising solution for enhancing early detection and treatment planning in the medical field.
 Keywords
 
-Lung Cancer • Deep Learning • AlexNet • Inception V4 • Machine Learning • SVM • CT Scans • Medical Imaging
+Lung Cancer • Deep Learning • AlexNet • Inception V4 • Machine Learning • SVM • CT Scans • Medical Imaging .CNNA
