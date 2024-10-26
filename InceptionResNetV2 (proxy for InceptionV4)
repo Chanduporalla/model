@@ -1,0 +1,95 @@
+import tensorflow as tf
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, Dropout, GlobalAveragePooling2D
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import InceptionResNetV2
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+import matplotlib.pyplot as plt
+
+training_data_generator = ImageDataGenerator(
+    rescale=1./255,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True
+)
+
+validation_data_generator = ImageDataGenerator(rescale=1./255)
+
+training_data_flow = training_data_generator.flow_from_directory(
+    'lung-data/Data/train/',
+    target_size=(224, 224),
+    batch_size=32,
+    class_mode='categorical'
+)
+
+validation_data_flow = validation_data_generator.flow_from_directory(
+    'lung-data/Data/valid/',
+    target_size=(224, 224),
+    batch_size=32,
+    class_mode='categorical'
+)
+
+inception_resnet_base = InceptionResNetV2(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+
+layer = inception_resnet_base.output
+layer = GlobalAveragePooling2D()(layer)
+layer = Dense(4096, activation='relu')(layer)
+layer = Dropout(0.5)(layer)
+layer = Dense(2048, activation='relu')(layer)
+layer = Dropout(0.5)(layer)
+
+output_layer = Dense(4, activation='softmax')(layer)
+
+final_model = Model(inputs=inception_resnet_base.input, outputs=output_layer)
+
+for inception_resnet_layer in inception_resnet_base.layers:
+    inception_resnet_layer.trainable = False
+
+final_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+final_model.summary()
+
+training_history = final_model.fit(
+    training_data_flow,
+    steps_per_epoch=training_data_flow.samples // training_data_flow.batch_size,
+    validation_data=validation_data_flow,
+    validation_steps=validation_data_flow.samples // validation_data_flow.batch_size,
+    epochs=25
+)
+
+validation_loss, validation_accuracy = final_model.evaluate(validation_data_flow)
+print(f"Validation Accuracy: {validation_accuracy}")
+
+training_features = final_model.predict(training_data_flow)
+validation_features = final_model.predict(validation_data_flow)
+
+svm_classifier_pipeline = make_pipeline(StandardScaler(), SVC(kernel='linear', decision_function_shape='ovr'))
+svm_classifier_pipeline.fit(training_features, training_data_flow.classes)
+
+validation_predictions = svm_classifier_pipeline.predict(validation_features)
+
+print('Confusion Matrix')
+print(confusion_matrix(validation_data_flow.classes, validation_predictions))
+
+print('Classification Report')
+target_labels = ['Adenocarcinoma', 'Large Cell Carcinoma', 'Squamous Cell Carcinoma', 'Normal']
+print(classification_report(validation_data_flow.classes, validation_predictions, target_names=target_labels))
+
+plt.figure(figsize=(12, 4))
+
+plt.subplot(1, 2, 1)
+plt.plot(training_history.history['accuracy'], label='Train Accuracy')
+plt.plot(training_history.history['val_accuracy'], label='Validation Accuracy')
+plt.legend()
+plt.title('Model Accuracy')
+
+plt.subplot(1, 2, 2)
+plt.plot(training_history.history['loss'], label='Train Loss')
+plt.plot(training_history.history['val_loss'], label='Validation Loss')
+plt.legend()
+plt.title('Model Loss')
+
+plt.show()
